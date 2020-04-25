@@ -117,5 +117,6 @@ GENERAL OPTIONS
 # TODO
 - automated app installs (wordpress)
 - ensure the required container is running before issuing the command
+- automatic update and update of the xshok-admin.sh
 
 ![No volumes Docker Visualization](docker-vis-novols.png)
