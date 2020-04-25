@@ -1,9 +1,9 @@
 # docker-webserver
 Our optimized production web-server setup based on docker
 
-## This setup is been used for most of our web servers and has been used for more than 6 years.
-* we have perfect scores on various webpage and performance tests
-* There are literally thousands of sites using this platform, everything from online shops with more than 35 000 active customers to a simple blog to forums.
+## This setup is used for most of our web servers and has been used for more than 6 years.
+* We have near or perfect scores for all the major webpage and performance tests
+* There are literally thousands of sites using this setup, everything from online shops with more than 35 000 active customers to a simple blogs and forums.
 * In 2020 nginx + php-fpm was replaced with openlitespeed due to the massive performance advantage wordpress has with lscache.
 * Everything is optimized and the config values used are derived by years of testing, tweaking and observing real world data.
 
