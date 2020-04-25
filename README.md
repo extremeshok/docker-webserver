@@ -116,5 +116,6 @@ GENERAL OPTIONS
 
 # TODO
 - automated app installs (wordpress)
+- ensure the required container is running before issuing the command
 
 ![No volumes Docker Visualization](docker-vis-novols.png)
