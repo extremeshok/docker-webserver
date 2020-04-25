@@ -9,6 +9,27 @@ Our optimized production web-server setup based on docker
 
 ![Full Docker Visualization](docker-vis-full.png)
 
+### used dockers:
+* extremeshok/unbound **cashing dns**
+* extremeshok/openlitespeed-php **optimised openlitespeed with php webserver**
+* extremeshok/acme-http2https **generates letsencrypt certificates and forwards all http to httpS**
+* containrrr/watchtower **autoupdates docker containers**
+* mariadb:10.5 **mysql, but better**
+* tiredofit/db-backup **backup mysql databases every 1 hour**
+* bitnami/phpmyadmin **webbased database admin**
+* redis **caching store**
+* memcached **caching store**
+* robbertkl/ipv6nat **ipv6nat**
+
+### Benefits
+* optimized
+* vhosts (host multiple independent domains)
+* hourly mysql database backups
+* simple management
+* automatic updates for wordpress
+* fully integrated
+* stable
+
 ### Recommended setup:
 * VM / VPS (as a rule, always run a vm instead of baremetal, makes it easy to upgrade and do maintenance)
 * Fresh/clean UBUNTU LTS configured with the xshok-ubuntu-docker-host.sh script https://github.com/extremeshok/xshok-docker
