@@ -23,6 +23,19 @@ Our optimized production web-server setup based on docker
 ### Recommended VM:
 2 vcpu, 4GB ram (2GB can be used), NVME storage (webservers need nvme, sata ssd is too slow and hdd is pointless)
 
+### Usage / Installation
+* Download and place the files into /datastore
+* start servers
+``` bash xshok-admin.sh --start ```
+* start servers at boot
+``` bash xshok-admin.sh --boot ```
+* set a password for the litespeed weadmin https://hostname:7080
+``` bash xshok-admin.sh --password ```
+* add a FQDN domain, create a database and generate a letsencrypt ssl *
+``` bash xshok-admin.sh --qa fqdn.com ```
+* restart litespeed to apply the chnages *
+``` bash xshok-admin.sh --restart ```
+
 # xshok-admin.sh
 used to control and manage the webserver, add domains, databases, ssl etc.
 ```
@@ -30,7 +43,6 @@ eXtremeSHOK.com Webserver
 WEBSITE OPTIONS
    -wl | --website-list
        list all websites
-
    -wa | --website-add [domain_name]
        add a website
    -wd | --website-delete [domain_name]
