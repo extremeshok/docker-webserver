@@ -1,28 +1,24 @@
 # docker-webserver
 Our optimized production web-server setup based on docker
 
-# THESE DOCS ARE A WORK IN PROGRESS
+## This setup is been used for most of our web servers and has been used for more than 6 years.
+* we have perfect scores on various webpage and performance tests
+* There are literally thousands of sites using this platform, from an online shop with more than 35 000 active customers to a simple blog.
+* In 2020 nginx + php-fpm was replaced with openlitespeed due to the massive performance advantage wordpress has with lscache.
+* Everything is optimized and the config values used are derived by years of testing, tweaking and observing real world data.
 
 ![Full Docker Visualization](docker-vis-full.png)
 
-![No volumes Docker Visualization](docker-vis-novols.png)
-
-## This setup has been used for most of our web servers for more than 6 years.
-we have perfect scores on various webpage and performance tests
-There are literally thousands of sites using this platform, from an online shop with more than 35 000 active customers to a simple blog.
-In 2020 nginx + php-fpm was replaced with openlitespeed due to the massive performance advantage wordpress has with lscache.
-Everything is optimized and the config values used are derived by years of testing, tweaking and observing real world data.
-
 ### Recommended setup:
-VM / VPS (as a rule, always run a vm instead of baremetal, makes it easy to upgrade and do maintenance)
-Fresh/clean UBUNTU LTS configured with the xshok-ubuntu-docker-host.sh script https://github.com/extremeshok/xshok-docker
-Project run from the /datastore dir.
+* VM / VPS (as a rule, always run a vm instead of baremetal, makes it easy to upgrade and do maintenance)
+* Fresh/clean UBUNTU LTS configured with the xshok-ubuntu-docker-host.sh script https://github.com/extremeshok/xshok-docker
+* Project run from the /datastore dir.
 
 ### Notes:
-.env is generated on first install, as the passwords are always randomised.
-there is no need to configure or edit the docker-compose.yml
-all administration is done via xshok-admin.sh
-files are saved into the volumes dir
+* .env is generated on first install, as the passwords are always randomised.
+* there is no need to configure or edit the docker-compose.yml
+* all administration is done via xshok-admin.sh
+* files are saved into the volumes dir
 
 ### Recommended VM:
 2 vcpu, 4GB ram (2GB can be used), NVME storage (webservers need nvme, sata ssd is too slow and hdd is pointless)
@@ -83,3 +79,6 @@ GENERAL OPTIONS
    -H, --help
       Display help and exit.
 ```
+
+
+![No volumes Docker Visualization](docker-vis-novols.png)
