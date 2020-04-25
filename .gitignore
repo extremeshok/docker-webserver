@@ -1,0 +1,5 @@
+ols-docker-env
+.xs_password
+.env
+volumes/*
+sites/*

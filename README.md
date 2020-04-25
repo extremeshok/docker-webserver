@@ -3,7 +3,7 @@ Our optimized production web-server setup based on docker
 
 ## This setup is been used for most of our web servers and has been used for more than 6 years.
 * we have perfect scores on various webpage and performance tests
-* There are literally thousands of sites using this platform, from an online shop with more than 35 000 active customers to a simple blog.
+* There are literally thousands of sites using this platform, everything from online shops with more than 35 000 active customers to a simple blog to forums.
 * In 2020 nginx + php-fpm was replaced with openlitespeed due to the massive performance advantage wordpress has with lscache.
 * Everything is optimized and the config values used are derived by years of testing, tweaking and observing real world data.
 
@@ -52,9 +52,9 @@ Our optimized production web-server setup based on docker
 ``` bash xshok-admin.sh --boot ```
 * set a password for the litespeed weadmin https://hostname:7080
 ``` bash xshok-admin.sh --password ```
-* add a FQDN domain, create a database and generate a letsencrypt ssl *
+* add a FQDN domain, create a database and generate a letsencrypt ssl
 ``` bash xshok-admin.sh --qa fqdn.com ```
-* restart litespeed to apply the chnages *
+* restart litespeed to apply the changes
 ``` bash xshok-admin.sh --restart ```
 
 # xshok-admin.sh
@@ -113,5 +113,7 @@ GENERAL OPTIONS
       Display help and exit.
 ```
 
+# TODO
+- automated app installs (wordpress)
 
 ![No volumes Docker Visualization](docker-vis-novols.png)

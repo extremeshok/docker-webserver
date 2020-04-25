@@ -1,0 +1,367 @@
+### eXtremeSHOK.com Docker Webserver
+version:                '3.1'
+################################################################################
+# This is property of eXtremeSHOK.com
+# You are free to use, modify and distribute, however you may not remove this notice.
+# Copyright (c) Adrian Jon Kriel :: admin@extremeshok.com
+################################################################################
+########## SERVICES ########
+services:
+###### Unbound is a validating, recursive, and caching DNS resolver.
+    unbound:
+      image:            extremeshok/unbound:latest
+      environment:
+        - TZ=${TIMEZONE}
+      volumes:
+        - vol-unbound-keys:/etc/unbound/keys/:rw
+      restart:          always
+      tty:              true
+      sysctls:
+        - net.ipv6.conf.all.disable_ipv6=${SYSCTL_IPV6_DISABLED:-0}
+      networks:
+        network:
+          ipv4_address: 172.22.1.254
+          aliases:
+            - dns
+
+###### Watchtower allows for automatically updating and restarting containers
+    watchtower:
+      image:            containrrr/watchtower:latest
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock:rw
+      command:          --interval 300 --cleanup --include-stopped
+      environment:
+        - TZ=${TIMEZONE}
+      restart:          always
+      sysctls:
+        - net.ipv6.conf.all.disable_ipv6=1
+      dns:
+        - 172.22.1.254
+      networks:
+        - network
+
+###### mariadb aka mysql
+    mysql:
+      image:            mariadb:10.5
+      volumes:
+        - vol-mysql:/var/lib/mysql/:delegated
+#        - ./data/etc/mysql/conf.d/my-2gb.cnf:/etc/mysql/conf.d/my.cnf:ro
+        - ./data/etc/mysql/conf.d/my-4gb.cnf:/etc/mysql/conf.d/my.cnf:ro
+#        - ./data/etc/mysql/conf.d/my-16gb.cnf:/etc/mysql/conf.d/my.cnf:ro
+#        - ./data/etc/mysql/conf.d/my-32gb.cnf:/etc/mysql/conf.d/my.cnf:ro
+      environment:
+        - TZ=${TIMEZONE}
+        - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+        - MYSQL_DATABASE=${MYSQL_DATABASE}
+        - MYSQL_USER=${MYSQL_USER}
+        - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      restart:          always
+      # DO NOT EXPOSE PORTS..SECURITY RISK
+      # ports:
+      #    - 3306:3306
+      sysctls:
+        - net.ipv6.conf.all.disable_ipv6=1
+      dns:
+        - 172.22.1.254
+      networks:
+        - network
+
+###### mysql-backup
+    mysql-backup:
+      image:            tiredofit/db-backup:latest
+      volumes:
+       - vol-mysql-backup:/backup/:rw
+      environment:
+       - DB_TYPE=mysql
+       - DB_HOST=mysql
+       - DB_USER=root
+       - DB_PASS=${MYSQL_ROOT_PASSWORD}
+       - DB_DUMP_FREQ=60
+       - DB_DUMP_BEGIN=+10
+       - DB_CLEANUP_TIME=1500
+       - SPLIT_DB=TRUE
+       - MD5=TRUE
+       - COMPRESSION=GZ
+       - PARALLEL_COMPRESSION=FALSE
+       - DEBUG_MODE=FALSE
+      restart:          always
+      dns:
+        - 172.22.1.254
+      sysctls:
+        - net.ipv6.conf.all.disable_ipv6=1
+      networks:
+        - network
+
+##### PHPMYADMIN
+    phpmyadmin:
+      image:            bitnami/phpmyadmin:latest
+      ports:
+  #      - 8082:80
+       - 8443:443
+      environment:
+      - DATABASE_HOST=mysql
+      depends_on:
+        - mysql
+      dns:
+        - 172.22.1.254
+      networks:
+        - network
+
+###### REDIS
+    redis:
+      image:            redis:latest
+      volumes:
+        - ./data/etc/redis/:/etc/redis/:ro
+        - vol-redis:/var/lib/redis:delegated
+      restart:          always
+      # DO NOT EXPOSE PORTS..SECURITY RISK
+      # ports:
+      #   - 6379:6379
+      command:
+        - redis-server
+        - /etc/redis/redis.conf
+      environment:
+        - TZ=${TIMEZONE}
+      sysctls:
+        - net.ipv6.conf.all.disable_ipv6=1
+      dns:
+        - 172.22.1.254
+      networks:
+        - network
+
+###### MEMCACHED
+    memcached:
+      image:            memcached:latest
+      restart:          always
+      # DO NOT EXPOSE PORTS..SECURITY RISK
+      # ports:
+      #   - "11211:11211"
+      environment:
+        - TZ=${TIMEZONE}
+        - MEMCACHED_CACHE_SIZE=${MEMCACHED_CACHE_SIZE:-64}
+      sysctls:
+        - net.ipv6.conf.all.disable_ipv6=1
+      dns:
+        - 172.22.1.254
+      networks:
+        - network
+
+###### Openlitespeed with builtin acme and lsphp
+    openlitespeed:
+      image:            extremeshok/openlitespeed-php:latest
+      env_file:
+        - .env
+      volumes:
+        - vol-www-vhosts:/var/www/vhosts:rw
+        - vol-www-conf:/etc/openlitespeed:rw
+        - ./xs:/xs:rw
+      restart:          always
+      ports:
+        # httpS
+        - 443:443
+        # quic aka http/3
+        - 443:443/udp
+        # webadmin
+        - 7080:7080
+      environment:
+        - TZ=${TIMEZONE}
+        - PHP_REDIS_SESSIONS=yes
+        - VHOST_CRON_ENABLE=true
+        - WP_AUTOUPDATE_ENABLE=true
+      sysctls:
+        - net.ipv6.conf.all.disable_ipv6=${SYSCTL_IPV6_DISABLED:-0}
+      depends_on:
+        - redis
+        - mysql
+      dns:
+        - 172.22.1.254
+      networks:
+        - network
+
+###### xshokacmehttp
+    xshokacmehttp:
+      image:            extremeshok/acme-http2https:latest
+      environment:
+        - TZ=${TIMEZONE}
+      volumes:
+        - vol-acme:/acme:rw
+        - vol-www-vhosts:/var/www/vhosts:rw
+      ports:
+        - 80:80
+      restart:          always
+      dns:
+        - 172.22.1.254
+      sysctls:
+        - net.ipv6.conf.all.disable_ipv6=${SYSCTL_IPV6_DISABLED:-0}
+      networks:
+        - network
+
+###### ELASTICSEARCH
+# ### http://elasticsearch:9200
+#  ###### elasticsearch:
+#       image:          extremeshok/elasticsearch-elasticpress:latest
+#       volumes:
+#         - vol-elasticsearch:/usr/share/elasticsearch/data
+#       restart:        always
+#       ports:
+#         - 9200:9200
+#       environment:
+#         - TZ=${TIMEZONE}
+#         - discovery.type=single-node
+#         - bootstrap.memory_lock=true
+#         - "ES_JAVA_OPTS=-Xms4096m -Xmx4096m"
+#       ulimits:
+#         memlock:
+#           soft:       -1
+#           hard:       -1
+#       dns:
+#         - 172.22.1.254
+#       sysctls:
+#         - net.ipv6.conf.all.disable_ipv6=1
+#       networks:
+#         - network
+
+# ###### xshokgeoip
+#   xshokgeoip:
+#     image:            extremeshok/geoip:latest
+#     restart:          always
+#     environment:
+#       - TZ=${TIMEZONE}
+#       - DISABLE_MAXMIND_LEGACY=true
+#     volumes:
+#       - vol-geoip:/geoip/:rw
+#     restart:          always
+#     sysctls:
+#       - net.ipv6.conf.all.disable_ipv6=${SYSCTL_IPV6_DISABLED:-0}
+#     networks:
+#       - network
+
+# ###### phpredisadmin:
+#    image:             erikdubbelboer/phpredisadmin:latest
+#    container_name:    phpredisadmin
+#    restart:           always
+#    ports:
+#      - "8082:80"
+#    environment:
+#      - TZ=${TimeZone}
+#      - REDIS_1_HOST=redis
+#      - REDIS_1_PORT=6379
+#     sysctls:
+#       - net.ipv6.conf.all.disable_ipv6=${SYSCTL_IPV6_DISABLED:-0}
+#     networks:
+#       - network
+
+# ###### FTP
+#     ftpd_server:
+#       image:          stilliard/pure-ftpd:hardened
+#       container_name: pure-ftpd
+#       ports:
+#         - "21:21"
+#         - "30000-30009:30000-30009"
+#       volumes:
+#         - ./data/var/www/keyfile:/var/www/keyfile:ro
+#         - vol-www-html:/var/www/html/:rw
+#       environment:
+#         PUBLICHOST:   "localhost"
+#         FTP_USER_NAME: nobody
+#         FTP_USER_PASS: 3498hkjhku21398721938usjal920197siu1o32iu7012397019kjs
+#         FTP_USER_HOME: /var/www/html/le_connector
+#         FTP_USER_UID: 65534
+#         FTP_USER_GID: 65534
+#       restart:        always
+
+###### IPv6 NAT
+    ipv6nat:
+      image:            robbertkl/ipv6nat:latest
+      restart:          always
+      privileged:       true
+      network_mode:     "host"
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock:ro
+        - /lib/modules:/lib/modules:ro
+
+########## NETWORKS ########
+networks:
+  network:
+    driver:             bridge
+#    enable_ipv6:       true
+    ipam:
+      driver:           default
+      config:
+        - subnet:       172.22.1.0/24
+#        - subnet:      fd4d:6169:6c63:6f77::/64
+
+########## VOLUMES ########
+volumes:
+  vol-www-vhosts:
+    driver:             local
+    driver_opts:
+      type:             bindW
+      o:                bind
+      device:           ${PWD}/volumes/www-vhosts
+  vol-www-conf:
+      driver:           local
+      driver_opts:
+        type:           bind
+        o:              bind
+        device:         ${PWD}/volumes/www-conf
+  vol-acme:
+    driver:             local
+    driver_opts:
+      type:             bind
+      o:                bind
+      device:           ${PWD}/volumes/acme
+  vol-logs:
+    driver:             local
+    driver_opts:
+      type:             bind
+      o:                bind
+      device:           ${PWD}/volumes/logs
+  vol-unbound-keys:
+    driver:             local
+    driver_opts:
+      type:             bind
+      o:                bind
+      device:           ${PWD}/volumes/unbound-keys
+  vol-mysql:
+    driver:             local
+    driver_opts:
+      type:             bind
+      o:                bind
+      device:           ${PWD}/volumes/mysql
+  vol-mysql-backup:
+    driver:             local
+    driver_opts:
+      type:             bind
+      o:                bind
+      device:           ${PWD}/volumes/mysql-backup
+  vol-redis:
+    driver:             local
+    driver_opts:
+      type:             bind
+      o:                bind
+      device:           ${PWD}/volumes/redis
+  # vol-elasticsearch:
+  #   driver:           local
+  #   driver_opts:
+  #     type:           bind
+  #     o:              bind
+  #     device:         ${PWD}/volumes/elasticsearch
+  # vol-geoip:
+  #   driver:           local
+  #   driver_opts:
+  #     type:           bind
+  #     o:              bind
+  #     device:         ${PWD}/volumes/geoip
+  # vol-geoip-maxmind:
+  #   driver:           local
+  #   driver_opts:
+  #     type:           bind
+  #     o:              bind
+  #     device:         ${PWD}/volumes/geoip/maxmind
+  # vol-geoip-country-cidr:
+  #   driver:           local
+  #   driver_opts:
+  #     type:           bind
+  #     o:              bind
+  #     device:         ${PWD}/volumes/geoip/country-cidr
