@@ -1,5 +1,6 @@
 # docker-webserver
 Our optimized production web-server setup based on docker
+* openlitespeed + PHP 7.4 + letsencrypt ssl + mariadb(mysql) + redis + memcached
 
 ## This setup is used for most of our web servers and has been used for more than 6 years.
 * We have near or perfect scores for all the major webpage and performance tests
