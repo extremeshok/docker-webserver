@@ -401,13 +401,13 @@ xshok_database_backup() { #database #filename*optional
   fi
 
   if [ ${DBFILENAME##*.} == "gz" ] ; then
-    docker-compose exec ${CONTAINER_MYSQL} su -c "mysqldump -uroot -p'${MYSQL_ROOT_PASSWORD}' \"${DBNAME}\"" | gzip -9 > "${DBFILENAME}"
+    docker-compose exec ${CONTAINER_MYSQL} su -c "mysqldump -uroot -p'${MYSQL_ROOT_PASSWORD}' --net_buffer_length 4096 --no-create-info --single-transaction \"${DBNAME}\"" | gzip -9 > "${DBFILENAME}"
     if [ ${?} != 0 ]; then
       echo 'ERROR: backup failed, please check!'
       exit 1
     fi
   else
-    docker-compose exec ${CONTAINER_MYSQL} su -c "mysqldump -uroot -p'${MYSQL_ROOT_PASSWORD}' \"${DBNAME}\"" > "${DBFILENAME}"
+    docker-compose exec ${CONTAINER_MYSQL} su -c "mysqldump -uroot -p'${MYSQL_ROOT_PASSWORD}' --net_buffer_length 4096 --no-create-info --single-transaction \"${DBNAME}\"" > "${DBFILENAME}"
     if [ ${?} != 0 ]; then
       echo 'ERROR: backup failed, please check!'
       exit 1
@@ -416,7 +416,7 @@ xshok_database_backup() { #database #filename*optional
   echo "Backup saved to : ${DBFILENAME}"
 }
 
-################## backup database
+################## restore database
 xshok_database_restore() { #database #filename
   DBNAME="${1}"
   DBFILENAME="${2}"
@@ -449,19 +449,34 @@ xshok_database_restore() { #database #filename
     exit 1
   fi
 
+  TEMPSQL="/tmp/xs-sql-xs-$(date +%s).sql"
+
+  # create tempsql
   if [ ${DBFILENAME##*.} == "gz" ] ; then
-    zcat "${DBFILENAME}" | docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' \"${DBNAME}\""
+      zcat "${DBFILENAME}" > "${TEMPSQL}"
+  else
+    cp -f "${DBFILENAME}" "${TEMPSQL}"
+  fi
+
+  # filter(remove) create database, alter database, drop database and use statments from restore sql file
+  sed -i -e 's/^[[:blank:]]*CREATE DATABASE.*//Ig' "${TEMPSQL}"
+  sed -i -e 's/^[[:blank:]]*ALTER DATABASE.*//Ig' "${TEMPSQL}"
+  sed -i -e 's/^[[:blank:]]*DROP DATABASE.*//Ig' "${TEMPSQL}"
+  sed -i -e 's/^[[:blank:]]*USE.*//Ig' "${TEMPSQL}"
+
+  if [ -f "${TEMPSQL}" ] ; then
+    cat "${TEMPSQL}" | docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' \"${DBNAME}\""
     if [ ${?} != 0 ]; then
       echo 'ERROR: restore failed, please check!'
       exit 1
     fi
   else
-    cat "${DBFILENAME}" | docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' \"${DBNAME}\""
-    if [ ${?} != 0 ]; then
-      echo 'ERROR: restore failed, please check!'
-      exit 1
-    fi
+    echo "ERROR: TEMPSQL does not exist: ${TEMPSQL}"
+    exit 1
   fi
+
+  # remove tempsql
+  rm -f "${TEMPSQL}"
 
   echo "Restored ${DBFILENAME} to  ${DBNAME} for ${DOMAIN}"
 }

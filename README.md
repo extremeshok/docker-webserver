@@ -41,6 +41,7 @@ Our optimized production web-server setup based on docker
 * there is no need to configure or edit the docker-compose.yml
 * all administration is done via xshok-admin.sh
 * files are saved into the volumes dir
+* restoring sql files, a temporary filtered sql file is created with the create database, alter database, drop database and use statments removed
 
 ### Recommended VM:
 2 vcpu, 4GB ram (2GB can be used), NVME storage (webservers need nvme, sata ssd is too slow and hdd is pointless)
@@ -113,10 +114,5 @@ GENERAL OPTIONS
    -H, --help
       Display help and exit.
 ```
-
-# TODO
-- automated app installs (wordpress)
-- ensure the required container is running before issuing the command
-- automatic update and update of the xshok-admin.sh
 
 ![No volumes Docker Visualization](docker-vis-novols.png)
