@@ -29,9 +29,13 @@ services:
       image:            containrrr/watchtower:latest
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock:rw
-      command:          --interval 300 --cleanup --include-stopped
       environment:
         - TZ=${TIMEZONE}
+        - WATCHTOWER_CLEANUP=true
+        - WATCHTOWER_POLL_INTERVAL=300
+        - WATCHTOWER_INCLUDE_STOPPED=true
+        - WATCHTOWER_REVIVE_STOPPED=true
+        - WATCHTOWER_TIMEOUT=180
       restart:          always
       sysctls:
         - net.ipv6.conf.all.disable_ipv6=1
