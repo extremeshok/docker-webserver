@@ -37,21 +37,33 @@ FILTERED_DOMAIN=""
 
 ################# SUPPORTING FUNCTIONS :: START
 
-fst_match_line(){
+function fst_match_line () {
   FIRST_LINE_NUM=$(grep -n -m 1 ${1} ${2} | awk -F ':' '{print $1}')
 }
 
-fst_match_after(){
+function fst_match_after () {
   FIRST_NUM_AFTER=$(tail -n +${1} ${2} | grep -n -m 1 ${3} | awk -F ':' '{print $1}')
 }
 
-lst_match_line(){
+function lst_match_line () {
   fst_match_after ${1} ${2} ${3}
   LAST_LINE_NUM=$((${FIRST_LINE_NUM}+${FIRST_NUM_AFTER}-1))
 }
 
+# function to check if the $2 value is not null and does not start with -
+function xshok_check_s2 () {
+	if [ "$1" ]; then
+		if [[ "$1" =~ ^-.* ]]; then
+			xshok_pretty_echo_and_log "ERROR: Missing value for option or value begins with -" "="
+			exit 1
+		fi
+	else
+		xshok_pretty_echo_and_log "ERROR: Missing value for option" "="
+		exit 1
+	fi
+}
 
-xshok_validate_domain(){ #domain
+function xshok_validate_domain () { #domain
   DOMAIN="${1}"
   DOMAIN="${DOMAIN,,}"
   DOMAIN="${DOMAIN#www.*}" # remove www.
@@ -87,7 +99,7 @@ xshok_validate_domain(){ #domain
 ################# WEBSITE FUNCTIONS  :: START
 
 ################# list all websites
-xshok_website_list(){
+function xshok_website_list () {
   ## /var/www/vhosts
   if [ -d "${VHOST_DIR}" ] ; then
     echo "Website List"
@@ -102,7 +114,7 @@ xshok_website_list(){
 }
 
 ################# add a website
-xshok_website_add(){ #domain
+function xshok_website_add () { #domain
   xshok_validate_domain "${1}"
   if [ "$(grep -E "member.*${DOMAIN_ESCAPED}" ${OLS_HTTPD_CONF})" != '' ]; then
     echo "Warning: ${DOMAIN} already exists, Check ${OLS_HTTPD_CONF}"
@@ -142,7 +154,7 @@ xshok_website_add(){ #domain
 }
 
 ################# delete an existing website
-xshok_website_delete(){ #domain
+function xshok_website_delete () { #domain
   xshok_validate_domain "${1}"
   if [ "$(grep -E "member.*${DOMAIN_ESCAPED}" ${OLS_HTTPD_CONF})" == '' ]; then
     echo "ERROR: ${DOMAIN} does NOT exist, Check ${OLS_HTTPD_CONF}"
@@ -157,7 +169,7 @@ xshok_website_delete(){ #domain
 }
 
 ################# fix permission and ownership of an existing website
-xshok_website_permissions(){ #domain
+function xshok_website_permissions () { #domain
   xshok_validate_domain "${1}"
   if [ "$(grep -E "member.*${DOMAIN_ESCAPED}" ${OLS_HTTPD_CONF})" == '' ]; then
     echo "Error: ${DOMAIN} does not exist"
@@ -179,7 +191,7 @@ xshok_website_permissions(){ #domain
 ################# DATABASE FUNCTIONS  :: START
 
 ################## list all databases for domain
-xshok_database_list() { #domain
+function xshok_database_list () { #domain
   xshok_validate_domain "${1}"
   result="$(docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"SHOW DATABASES LIKE '%%${FILTERED_DOMAIN}%%'\"")"
   if [ "$result" != "" ] ; then
@@ -191,7 +203,7 @@ xshok_database_list() { #domain
 }
 
 ################## add database to domain
-xshok_database_add() { #domain
+function xshok_database_add () { #domain
   xshok_validate_domain "${1}"
   DBNAME="${FILTERED_DOMAIN}-$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)"
   DBUSER="$DBNAME"
@@ -273,7 +285,7 @@ EOF
 }
 
 ################## delete database and database user
-xshok_database_delete() { #database
+function xshok_database_delete () { #database
   DBNAME="${1}"
   #get valid domain from database name
   FILTERED_DOMAIN=${DBNAME%-*}
@@ -330,7 +342,7 @@ xshok_database_delete() { #database
 }
 
 ################## reset password for database
-xshok_database_password() { #database
+function xshok_database_password () { #database
   DBNAME="${1}"
   #get valid domain from database name
   FILTERED_DOMAIN=${DBNAME%-*}
@@ -368,7 +380,7 @@ EOF
 }
 
 ################## backup database
-xshok_database_backup() { #database #filename*optional
+function xshok_database_backup () { #database #filename*optional
   DBNAME="${1}"
   DBFILENAME="${2}"
   #get valid domain from database name
@@ -417,7 +429,7 @@ xshok_database_backup() { #database #filename*optional
 }
 
 ################## restore database
-xshok_database_restore() { #database #filename
+function xshok_database_restore () { #database #filename
   DBNAME="${1}"
   DBFILENAME="${2}"
   #get valid domain from database name
@@ -485,13 +497,13 @@ xshok_database_restore() { #database #filename
 
 ################# SSL FUNCTIONS  :: START
 
-xshok_ssl_list(){
+function xshok_ssl_list () {
   echo "SSL List"
   echo "---- vhost -------- subdomains ----"
   cat "${ACME_DOMAIN_LIST}"
 
 }
-xshok_ssl_add(){ #domain
+function xshok_ssl_add () { #domain
   xshok_validate_domain "${1}"
   if grep -q "^${DOMAIN}" "${ACME_DOMAIN_LIST}" ; then
     echo "Warning: SSL already exists for ${DOMAIN} www.${DOMAIN}, Check ${ACME_DOMAIN_LIST}"
@@ -501,7 +513,7 @@ xshok_ssl_add(){ #domain
   fi
 }
 
-xshok_ssl_delete(){
+function xshok_ssl_delete () {
   xshok_validate_domain "${1}"
   if ! grep -q "^${DOMAIN}" "${ACME_DOMAIN_LIST}" ; then
     echo "ERROR: SSL for ${DOMAIN} does NOT exist, Check ${ACME_DOMAIN_LIST}"
@@ -516,7 +528,7 @@ xshok_ssl_delete(){
 
 ################# ADVANCED FUNCTIONS  :: START
 
-xshok_website_warm_cache(){ #domain
+function xshok_website_warm_cache () { #domain
   xshok_validate_domain "${1}"
   wget --quiet "https://${DOMAIN}/sitemap.xml" --no-cache --output-document - | egrep -o "http(s?):\/\/$DOMAIN[^] \"\(\)\]*" | while read line; do
       time curl -A 'Cache Warmer' -s -L $line > /dev/null 2>&1
@@ -524,7 +536,7 @@ xshok_website_warm_cache(){ #domain
   done
 }
 
-xshok_docker_mysql_optimiser(){
+function xshok_docker_mysql_optimiser () {
   ## works, but needs refactoring .. ie own docker image
   docker-compose exec mysql /bin/bash -c 'apt-get update && apt-get install -y wget perl && wget http://mysqltuner.pl/ -O /tmp/mysqltuner.pl && perl /tmp/mysqltuner.pl --host 127.0.0.1 --user root --pass ${MYSQL_ROOT_PASSWORD}'
   #docker-compose exec mysql /bin/bash -c '/usr/bin/mysqlcheck --host 127.0.0.1 --user root --password=${MYSQL_ROOT_PASSWORD} --all-databases --optimize --skip-write-binlog'
@@ -536,7 +548,7 @@ xshok_docker_mysql_optimiser(){
 ################# GENERAL FUNCTIONS  :: START
 
 ################# docker start
-xshok_docker_up(){
+function xshok_docker_up () {
 
   #Automatically create required volume dirs
   ## remove all comments
@@ -575,7 +587,7 @@ xshok_docker_up(){
 }
 
 ################# docker stop
-xshok_docker_down(){
+function xshok_docker_down () {
   docker-compose down
   sync
   docker stop $(docker ps -q)
@@ -583,13 +595,13 @@ xshok_docker_down(){
 }
 
 ################## restart webserver
-xshok_restart(){
+function xshok_restart () {
   echo "Gracefully restarting web server with zero down time"
   docker-compose exec ${CONTAINER_OLS} su -c '/usr/local/lsws/bin/lswsctrl restart >/dev/null'
 }
 
 ################## generate new password for web admin
-xshok_password(){
+function xshok_password () {
 
   ADMINPASS="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
 
@@ -604,7 +616,7 @@ xshok_password(){
 }
 
 ################# docker boot
-xshok_docker_boot(){
+function xshok_docker_boot () {
 
   if [ ! -d "/etc/systemd/system/" ] ; then
     echo "ERROR: systemd not detected"
@@ -648,7 +660,7 @@ EOF
 }
 
 ################## generate env
-xshok_env(){
+function xshok_env () {
   echo "Generating .env"
   if [ ! -f "${PWD}/default.env" ] ; then
     echo "missing ${PWD}/default.env"
@@ -679,7 +691,7 @@ source "${PWD}/.env"
 
 echo "eXtremeSHOK.com Webserver"
 
-help_message(){
+help_message () {
   echo -e "\033[1mWEBSITE OPTIONS\033[0m"
   echo "${EPACE}-wl | --website-list"
   echo "${EPACE}${EPACE} list all websites"
@@ -751,77 +763,109 @@ while [ ! -z "${1}" ]; do
       -wl | --website-list | --websitelist )
           xshok_website_list
           ;;
-      -wa | --website-add | --websiteadd ) shift
-        xshok_website_add ${1}
+      -wa | --website-add | --websiteadd )
+        xshok_check_s2 "$2";
+        xshok_website_add "$2"
         xshok_restart
+        shift
         ;;
-      -wd | --website-delete | --websitedelete ) shift
-        xshok_website_delete ${1}
+      -wd | --website-delete | --websitedelete )
+        xshok_check_s2 "$2";
+        xshok_website_delete "$2"
         xshok_restart
+        shift
         ;;
-      -wp | --website-permissions | --websitepermissions ) shift
-        xshok_website_permissions ${1}
+      -wp | --website-permissions | --websitepermissions )
+        xshok_check_s2 "$2";
+        xshok_website_permissions "$2"
+        shift
         ;;
       ## DATABASE
-      -dl | --database-list | --databaselist) shift
-        xshok_database_list ${1}
-        ;;
-      -da | --database-add | --databaseadd) shift
-        xshok_database_add ${1}
-        ;;
-      -dd | --database-delete | --databasedelete) shift
-        xshok_database_delete ${1}
-        ;;
-      -dp | --database-password | --databasepassword) shift
-        xshok_database_password ${1}
-        ;;
-      -db | --database-backup | --databasebackup) shift
-        xshok_database_backup ${1} ${2}
+      -dl | --database-list | --databaselist)
+        xshok_check_s2 "$2";
+        xshok_database_list "$2"
         shift
         ;;
-      -dr | --database-restore | --databaserestore) shift
-        xshok_database_restore ${1} ${2}
+      -da | --database-add | --databaseadd)
+        xshok_check_s2 "$2";
+        xshok_database_add "$2"
         shift
+        ;;
+      -dd | --database-delete | --databasedelete)
+        xshok_check_s2 "$2";
+        xshok_database_delete "$2"
+        shift
+        ;;
+      -dp | --database-password | --databasepassword)
+        xshok_check_s2 "$2";
+        xshok_database_password "$2"
+        shift
+        ;;
+      -db | --database-backup | --databasebackup)
+        xshok_check_s2 "$2";
+        xshok_check_s2 "$3";
+        xshok_database_backup "$2" "$3"
+        shift 2
+        ;;
+      -dr | --database-restore | --databaserestore)
+        xshok_check_s2 "$2";
+        xshok_check_s2 "$3";
+        xshok_database_restore "$2" "$3"
+        shift 2
         ;;
       ## SSL
       -sl | --ssl-list | --ssllist )
         xshok_ssl_list
         ;;
-      -sa | --ssl-add | --ssladd ) shift
-        xshok_ssl_add ${1}
+      -sa | --ssl-add | --ssladd )
+        xshok_check_s2 "$2";
+        xshok_ssl_add "$2"
+        shift
         ;;
-      -sd | --ssl-delete | --ssldelete ) shift
-        xshok_ssl_delete ${1}
+      -sd | --ssl-delete | --ssldelete )
+        xshok_check_s2 "$2";
+        xshok_ssl_delete "$2"
+        shift
         ;;
       ## QUICK
-      -qa | --quick-add | --quickadd ) shift
-        xshok_website_add ${1}
-        xshok_database_add ${1}
-        xshok_ssl_add ${1}
+      -qa | --quick-add | --quickadd )
+        xshok_check_s2 "$2";
+        xshok_website_add "$2"
+        xshok_database_add "$2"
+        xshok_ssl_add "$2"
         xshok_restart
+        shift
         ;;
       ## ADVANCED
-      -wc | --warm-cache | --warmcache ) shift
-        xshok_website_warm_cache ${1}
+      -wc | --warm-cache | --warmcache )
+        xshok_check_s2 "$2";
+        xshok_website_warm_cache "$2"
+        shift
         ;;
       ## GENERAL
       --up | --start | --init )
         xshok_docker_up
+        shift
         ;;
       --down | --stop )
         xshok_docker_down
+        shift
         ;;
       -r | --restart )
         xshok_restart
+        shift
         ;;
       -b | --boot | --service | --systemd )
         xshok_docker_boot
+        shift
         ;;
       -p | --password )
         xshok_password
+        shift
         ;;
       -e | --env )
         xshok_env
+        shift
         ;;
       *)
         help_message

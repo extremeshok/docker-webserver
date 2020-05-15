@@ -31,6 +31,15 @@ Our optimized production web-server setup based on docker
 * fully integrated
 * stable
 
+### Why ?
+* administration via a single shell command
+* webinterfaces are so 2000;s
+* optimized out of the box
+* a user can host multiple websites
+* low resource usage
+* quick to bootstrap
+* ubuntu + docker
+
 ### Recommended setup:
 * VM / VPS (as a rule, always run a vm instead of baremetal, makes it easy to upgrade and do maintenance)
 * Fresh/clean UBUNTU LTS configured with the xshok-ubuntu-docker-host.sh script https://github.com/extremeshok/xshok-docker
