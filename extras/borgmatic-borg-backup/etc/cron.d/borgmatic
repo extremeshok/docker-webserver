@@ -1,0 +1,3 @@
+# run borgmatic hourly
+
+0 * * * * root borgmatic --syslog-verbosity 1
