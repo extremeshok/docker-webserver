@@ -452,7 +452,10 @@ function xshok_backup_all_database () { #path*optional
   DBPATH="${1}"
   xshok_container_is_running "$CONTAINER_MYSQL"
 
-  while IFS= read -r DBNAME; do
+  database_list="$(docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"SHOW DATABASES\"" | xargs)"
+
+  for DBNAME in $database_list; do
+  #while IFS= read -r -d " " DBNAME; do
     if [ "$DBNAME" != "" ] && [ "$DBNAME" != "information_schema" ] && [ "$DBNAME" != "information_schema" ] && [ "$DBNAME" != "performance_schema" ] && [ "$DBNAME" != "mysql" ] ; then
       echo ":------${DBNAME}-----:"
       if [ -z "$DBPATH" ] ; then
@@ -462,7 +465,7 @@ function xshok_backup_all_database () { #path*optional
       fi
       echo $result
     fi
-  done < <(docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"SHOW DATABASES\"")
+  done
 }
 
 ################## restore database
