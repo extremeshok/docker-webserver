@@ -88,6 +88,7 @@ services:
        - COMPRESSION=GZ
        - PARALLEL_COMPRESSION=FALSE
        - DEBUG_MODE=FALSE
+       - EXTRA_OPTS=--default-character-set=utf8mb4
       restart:          always
       dns:
         - 172.22.1.254
