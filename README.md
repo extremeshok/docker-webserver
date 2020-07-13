@@ -30,6 +30,8 @@ Our optimized production web-server setup based on docker
 * automatic updates for wordpress
 * fully integrated
 * stable
+* quickly backup and restore databases
+* webserver file permissions and owenership are corrected on startup (non blocking)
 
 ### Why ?
 * administration via a single shell command
@@ -50,7 +52,7 @@ Our optimized production web-server setup based on docker
 * there is no need to configure or edit the docker-compose.yml
 * all administration is done via xshok-admin.sh
 * files are saved into the volumes dir
-* restoring sql files, a temporary filtered sql file is created with the create database, alter database, drop database and use statments removed
+* restoring sql files, a temporary filtered sql file is created with the create database, alter database, drop database and use statements removed
 
 ### Recommended VM:
 2 vcpu, 4GB ram (2GB can be used), NVME storage (webservers need nvme, sata ssd is too slow and hdd is pointless)
@@ -90,10 +92,13 @@ DATABASE OPTIONS
        delete a database
    -dp | --database-password [database_name]
        reset the password for a database
-   -db | --database-backup [database_name] [/your/path/file_name]*optional*
-       backup a database, optional backup filename, will use the default sql/databasename.sql.gz if not specified
    -dr | --database-restore [database_name] [/your/path/file_name]
        restore a database backup file to database_name, supports .gz and .sql
+BACKUP OPTIONS
+   -ba | --backup-all [/your/path]*optional*
+       backup all databases, optional backup path, file will use the default sql/databasename.sql.gz
+   -bd | --backup-database [database_name] [/your/path/file_name]*optional*
+       backup a database, optional backup filename, will use the default sql/databasename.sql.gz if not specified
 SSL OPTIONS
    -sl | --ssl-list
        list all ssl
@@ -122,6 +127,7 @@ GENERAL OPTIONS
        generate a new .env from the default.env
    -H, --help
       Display help and exit.
+
 ```
 
 ![No volumes Docker Visualization](docker-vis-novols.png)

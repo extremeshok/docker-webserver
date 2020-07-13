@@ -93,6 +93,18 @@ function xshok_validate_domain () { #domain
   echo "DOMAIN: ${DOMAIN}"
 }
 
+function xshok_container_is_running (){ #container_name
+  CONTAINER_NAME="${1}"
+  if [ -z $CONTAINER_NAME ] ; then
+    echo "ERROR: xshok_container_is_running container_name not specificed"
+    exit 1
+  fi
+  if [ -z $(docker-compose ps -q "$CONTAINER_NAME") ] || [ -z $(docker ps -q --no-trunc | grep $(docker-compose ps -q "$CONTAINER_NAME")) ]; then
+    echo "ERROR: Docker Container: ${CONTAINER_NAME}, it's not running."
+    exit 1
+  fi
+}
+
 ################# SUPPORTING FUNCTIONS  :: END
 
 
@@ -192,8 +204,10 @@ function xshok_website_permissions () { #domain
 
 ################## list all databases for domain
 function xshok_database_list () { #domain
+  xshok_container_is_running "$CONTAINER_MYSQL"
   xshok_validate_domain "${1}"
-  result="$(docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"SHOW DATABASES LIKE '%%${FILTERED_DOMAIN}%%'\"")"
+
+  result="$(docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"SHOW DATABASES LIKE '%%${FILTERED_DOMAIN}%%'\"")"
   if [ "$result" != "" ] ; then
     echo "Databases list for ${DOMAIN}: "
     echo "$result"
@@ -204,7 +218,9 @@ function xshok_database_list () { #domain
 
 ################## add database to domain
 function xshok_database_add () { #domain
+  xshok_container_is_running "$CONTAINER_MYSQL"
   xshok_validate_domain "${1}"
+
   DBNAME="${FILTERED_DOMAIN}-$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)"
   DBUSER="$DBNAME"
   DBPASS="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
@@ -213,12 +229,12 @@ function xshok_database_add () { #domain
     echo "Database Info File Found"
   fi
 
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e 'status'" >/dev/null 2>&1
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e 'status'" >/dev/null 2>&1
   if [ ${?} != 0 ]; then
     echo 'ERROR: DB access failed, please check!'
   fi
 
-  if docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -s -N -e \"SELECT IF(EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${DBNAME}'), 'yes','no')\"" | grep -q "yes" ; then
+  if docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -s -N -e \"SELECT IF(EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${DBNAME}'), 'yes','no')\"" | grep -q "yes" ; then
     echo "ERROR: Database exists"
     exit 1
   else
@@ -226,48 +242,48 @@ function xshok_database_add () { #domain
   fi
 
   echo "Start Transaction"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'START TRANSACTION'"
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'START TRANSACTION'"
   if [ ${?} != 0 ]; then
     echo 'ERROR: failed starting transaction, please check!'
     exit 1
   fi
   echo "- Create DB"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'CREATE DATABASE IF NOT EXISTS \`${DBNAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'"
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'CREATE DATABASE IF NOT EXISTS \`${DBNAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'"
   if [ ${?} != 0 ]; then
     echo 'ERROR: create DB, please check!'
-    docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
+    docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
     exit 1
   fi
   echo "- Create user"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'CREATE USER IF NOT EXISTS \`${DBUSER}\`@\`%\`'"
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'CREATE USER IF NOT EXISTS \`${DBUSER}\`@\`%\`'"
   if [ ${?} != 0 ]; then
     echo 'ERROR:create user failed, please check!'
-    docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
+    docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
     exit 1
   fi
   echo "- Set user password"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"ALTER USER '${DBUSER}'@'%' IDENTIFIED BY '${DBPASS}'\""
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"ALTER USER '${DBUSER}'@'%' IDENTIFIED BY '${DBPASS}'\""
   if [ ${?} != 0 ]; then
     echo 'ERROR: set user password failed, please check!'
-    docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
+    docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
     exit 1
   fi
   echo "- Assign permissions"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'GRANT ALL PRIVILEGES ON \`${DBNAME}\`.* TO \`${DBUSER}\`@\`%\`'"
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'GRANT ALL PRIVILEGES ON \`${DBNAME}\`.* TO \`${DBUSER}\`@\`%\`'"
   if [ ${?} != 0 ]; then
     echo 'ERROR: assign permissions failed, please check!'
-    docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
+    docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
     exit 1
   fi
   echo "Commit transaction"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'COMMIT'"
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'COMMIT'"
   if [ ${?} != 0 ]; then
     echo 'ERROR: failed starting transaction, please check!'
-    docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
+    docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
     exit 1
   fi
   echo "Flush (apply) privileges"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'FLUSH PRIVILEGES'"
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'FLUSH PRIVILEGES'"
   if [ ${?} != 0 ]; then
     echo 'ERROR: flush failed, please check!'
     exit 1
@@ -290,13 +306,14 @@ function xshok_database_delete () { #database
   #get valid domain from database name
   FILTERED_DOMAIN=${DBNAME%-*}
   DOMAIN="${FILTERED_DOMAIN//_/.}"
+  xshok_container_is_running "$CONTAINER_MYSQL"
   xshok_validate_domain "${DOMAIN}"
 
   if [ -f "${VHOST_DIR}/${DOMAIN}/dbinfo/${DBNAME}" ] ; then
     echo "Database Info File Found"
   fi
 
-  if docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -s -N -e \"SELECT IF(EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${DBNAME}'), 'yes','no')\"" | grep -q "yes" ; then
+  if docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -s -N -e \"SELECT IF(EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${DBNAME}'), 'yes','no')\"" | grep -q "yes" ; then
     echo "DATABASE: ${DBNAME}"
   else
     echo "ERROR: Database does not exist"
@@ -304,34 +321,34 @@ function xshok_database_delete () { #database
   fi
 
   echo "Start Transaction"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'START TRANSACTION'"
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'START TRANSACTION'"
   if [ ${?} != 0 ]; then
     echo 'ERROR: failed starting transaction, please check!'
     exit 1
   fi
   echo "- Drop the database"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'DROP DATABASE IF EXISTS \`${DBNAME}\`'"
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'DROP DATABASE IF EXISTS \`${DBNAME}\`'"
   if [ ${?} != 0 ]; then
     echo 'ERROR: assign permissions failed, please check!'
-    docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
+    docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
     exit 1
   fi
   echo "- Delete the user"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"DELETE FROM mysql.global_priv WHERE User = '${DBNAME}'\""
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"DELETE FROM mysql.global_priv WHERE User = '${DBNAME}'\""
   if [ ${?} != 0 ]; then
     echo 'ERROR: assign permissions failed, please check!'
-    docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
+    docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
     exit 1
   fi
   echo "Commit transaction"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'COMMIT'"
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'COMMIT'"
   if [ ${?} != 0 ]; then
     echo 'ERROR: failed starting transaction, please check!'
-    docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
+    docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'ROLLBACK'"
     exit 1
   fi
   echo "Flush (apply) privileges"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'FLUSH PRIVILEGES'"
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe 'FLUSH PRIVILEGES'"
   if [ ${?} != 0 ]; then
     echo 'ERROR: flush failed, please check!'
     exit 1
@@ -347,13 +364,14 @@ function xshok_database_password () { #database
   #get valid domain from database name
   FILTERED_DOMAIN=${DBNAME%-*}
   DOMAIN="${FILTERED_DOMAIN//_/.}"
+  xshok_container_is_running "$CONTAINER_MYSQL"
   xshok_validate_domain "${DOMAIN}"
 
   if [ -f "${VHOST_DIR}/${DOMAIN}/dbinfo/${DBNAME}" ] ; then
     echo "Database Info File Found"
   fi
 
-  if docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -s -N -e \"SELECT IF(EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${DBNAME}'), 'yes','no')\"" | grep -q "yes" ; then
+  if docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -s -N -e \"SELECT IF(EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${DBNAME}'), 'yes','no')\"" | grep -q "yes" ; then
     echo "DATABASE: ${DBNAME}"
   else
     echo "ERROR: Database does not exist"
@@ -362,7 +380,7 @@ function xshok_database_password () { #database
 
   DBUSER="$DBNAME"
   DBPASS="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
-  docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"ALTER USER '${DBUSER}'@'%' IDENTIFIED BY '${DBPASS}'\""
+  docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"ALTER USER '${DBUSER}'@'%' IDENTIFIED BY '${DBPASS}'\""
   if [ ${?} != 0 ]; then
     echo 'ERROR: password set failed, please check!'
     exit 1
@@ -380,12 +398,13 @@ EOF
 }
 
 ################## backup database
-function xshok_database_backup () { #database #filename*optional
+function xshok_backup_database () { #database #filename*optional
   DBNAME="${1}"
   DBFILENAME="${2}"
   #get valid domain from database name
   FILTERED_DOMAIN=${DBNAME%-*}
   DOMAIN="${FILTERED_DOMAIN//_/.}"
+  xshok_container_is_running "$CONTAINER_MYSQL"
   xshok_validate_domain "${DOMAIN}"
 
   if [ "$TIMESTAMP_SQL_BACKUP" == "yes" ] ; then
@@ -399,7 +418,7 @@ function xshok_database_backup () { #database #filename*optional
     DBFILENAME="${VHOST_DIR}/${DOMAIN}/sql/${DBNAME}${TIMESTAMP}.sql.gz"
   fi
 
-  if docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -s -N -e \"SELECT IF(EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${DBNAME}'), 'yes','no')\"" | grep -q "yes" ; then
+  if docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -s -N -e \"SELECT IF(EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${DBNAME}'), 'yes','no')\"" | grep -q "yes" ; then
     echo "DATABASE: ${DBNAME}"
   else
     echo "ERROR: Database does not exist"
@@ -413,19 +432,41 @@ function xshok_database_backup () { #database #filename*optional
   fi
 
   if [ ${DBFILENAME##*.} == "gz" ] ; then
-    docker-compose exec ${CONTAINER_MYSQL} su -c "mysqldump -uroot -p'${MYSQL_ROOT_PASSWORD}' --net_buffer_length 4096 --no-create-info --single-transaction \"${DBNAME}\"" | gzip -9 > "${DBFILENAME}"
+    docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysqldump -uroot -p'${MYSQL_ROOT_PASSWORD}' --net_buffer_length 4096 --no-create-info --single-transaction \"${DBNAME}\"" | gzip -9 > "${DBFILENAME}"
     if [ ${?} != 0 ]; then
       echo 'ERROR: backup failed, please check!'
       exit 1
     fi
   else
-    docker-compose exec ${CONTAINER_MYSQL} su -c "mysqldump -uroot -p'${MYSQL_ROOT_PASSWORD}' --net_buffer_length 4096 --no-create-info --single-transaction \"${DBNAME}\"" > "${DBFILENAME}"
+    docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysqldump -uroot -p'${MYSQL_ROOT_PASSWORD}' --net_buffer_length 4096 --no-create-info --single-transaction \"${DBNAME}\"" > "${DBFILENAME}"
     if [ ${?} != 0 ]; then
       echo 'ERROR: backup failed, please check!'
       exit 1
     fi
   fi
   echo "Backup saved to : ${DBFILENAME}"
+}
+
+################## backup all database
+function xshok_backup_all_database () { #path*optional
+  DBPATH="${1}"
+  xshok_container_is_running "$CONTAINER_MYSQL"
+
+  while IFS= read -r DBNAME; do
+    if [ "$DBNAME" != "" ] && [ "$DBNAME" != "information_schema" ] && [ "$DBNAME" != "information_schema" ] && [ "$DBNAME" != "performance_schema" ] && [ "$DBNAME" != "mysql" ] ; then
+      echo ":------${DBNAME}-----:"
+      if [ -z "$DBPATH" ] ; then
+        result="$(xshok_backup_database "$DBNAME")"
+        res=$?
+      else
+        result="$(xshok_backup_database "$DBNAME" "${DBPATH}/${DBNAME}.sql.gz")"
+        res=$?
+      fi
+
+      echo $result
+
+    fi
+  done < <(docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"SHOW DATABASES\"")
 }
 
 ################## restore database
@@ -435,6 +476,7 @@ function xshok_database_restore () { #database #filename
   #get valid domain from database name
   FILTERED_DOMAIN=${DBNAME%-*}
   DOMAIN="${FILTERED_DOMAIN//_/.}"
+  xshok_container_is_running "$CONTAINER_MYSQL"
   xshok_validate_domain "${DOMAIN}"
 
   if [ "$DBFILENAME" == "" ] ; then
@@ -454,7 +496,7 @@ function xshok_database_restore () { #database #filename
     exit 1
   fi
 
-  if docker-compose exec ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -s -N -e \"SELECT IF(EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${DBNAME}'), 'yes','no')\"" | grep -q "yes" ; then
+  if docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -s -N -e \"SELECT IF(EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${DBNAME}'), 'yes','no')\"" | grep -q "yes" ; then
     echo "DATABASE: ${DBNAME}"
   else
     echo "ERROR: Database does not exist"
@@ -477,7 +519,7 @@ function xshok_database_restore () { #database #filename
   sed -i -e 's/^[[:blank:]]*USE.*//Ig' "${TEMPSQL}"
 
   if [ -f "${TEMPSQL}" ] ; then
-    cat "${TEMPSQL}" | docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' \"${DBNAME}\""
+    cat "${TEMPSQL}" | docker-compose exec -T -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' \"${DBNAME}\""
     if [ ${?} != 0 ]; then
       echo 'ERROR: restore failed, please check!'
       exit 1
@@ -529,17 +571,19 @@ function xshok_ssl_delete () {
 ################# ADVANCED FUNCTIONS  :: START
 
 function xshok_website_warm_cache () { #domain
+  xshok_container_is_running "$CONTAINER_OLS"
   xshok_validate_domain "${1}"
-  wget --quiet "https://${DOMAIN}/sitemap.xml" --no-cache --output-document - | egrep -o "http(s?):\/\/$DOMAIN[^] \"\(\)\]*" | while read line; do
+  wget --quiet "https://${DOMAIN}/sitemap.xml" --no-cache --output-document - | egrep -o "http(s?):\/\/${DOMAIN[^]} \"\(\)\]*" | while read line; do
       time curl -A 'Cache Warmer' -s -L $line > /dev/null 2>&1
       echo $line
   done
 }
 
 function xshok_docker_mysql_optimiser () {
+  xshok_container_is_running "$CONTAINER_MYSQL"
   ## works, but needs refactoring .. ie own docker image
-  docker-compose exec mysql /bin/bash -c 'apt-get update && apt-get install -y wget perl && wget http://mysqltuner.pl/ -O /tmp/mysqltuner.pl && perl /tmp/mysqltuner.pl --host 127.0.0.1 --user root --pass ${MYSQL_ROOT_PASSWORD}'
-  #docker-compose exec mysql /bin/bash -c '/usr/bin/mysqlcheck --host 127.0.0.1 --user root --password=${MYSQL_ROOT_PASSWORD} --all-databases --optimize --skip-write-binlog'
+  docker-compose exec -T ${CONTAINER_MYSQL} /bin/bash -c 'apt-get update && apt-get install -y wget perl && wget http://mysqltuner.pl/ -O /tmp/mysqltuner.pl && perl /tmp/mysqltuner.pl --host 127.0.0.1 --user root --pass ${MYSQL_ROOT_PASSWORD}'
+  #docker-compose exec -T mysql /bin/bash -c '/usr/bin/mysqlcheck --host 127.0.0.1 --user root --password=${MYSQL_ROOT_PASSWORD} --all-databases --optimize --skip-write-binlog'
 }
 
 ################# ADVANCED FUNCTIONS  :: END
@@ -596,16 +640,17 @@ function xshok_docker_down () {
 
 ################## restart webserver
 function xshok_restart () {
+  xshok_container_is_running "$CONTAINER_OLS"
   echo "Gracefully restarting web server with zero down time"
-  docker-compose exec ${CONTAINER_OLS} su -c '/usr/local/lsws/bin/lswsctrl restart >/dev/null'
+  docker-compose exec -T ${CONTAINER_OLS} su -c '/usr/local/lsws/bin/lswsctrl restart >/dev/null'
 }
 
 ################## generate new password for web admin
 function xshok_password () {
-
+  xshok_container_is_running "$CONTAINER_OLS"
   ADMINPASS="$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
 
-  docker-compose exec ${CONTAINER_OLS} su -c 'echo "admin:$(/usr/local/lsws/admin/fcgi-bin/admin_php* -q /usr/local/lsws/admin/misc/htpasswd.php '${ADMINPASS}')" > /usr/local/lsws/admin/conf/htpasswd';
+  docker-compose exec -T ${CONTAINER_OLS} su -c 'echo "admin:$(/usr/local/lsws/admin/fcgi-bin/admin_php* -q /usr/local/lsws/admin/misc/htpasswd.php '${ADMINPASS}')" > /usr/local/lsws/admin/conf/htpasswd';
   if [ ${?} != 0 ]; then
     echo 'ERROR: password set failed, please check!'
     exit 1
@@ -689,7 +734,7 @@ fi
 
 source "${PWD}/.env"
 
-echo "eXtremeSHOK.com Webserver"
+echo "eXtremeSHOK.com Docker Webserver"
 
 help_message () {
   echo -e "\033[1mWEBSITE OPTIONS\033[0m"
@@ -710,10 +755,13 @@ help_message () {
   echo "${EPACE}${EPACE} delete a database"
   echo "${EPACE}-dp | --database-password [database_name]"
   echo "${EPACE}${EPACE} reset the password for a database"
-  echo "${EPACE}-db | --database-backup [database_name] [/your/path/file_name]*optional*"
-  echo "${EPACE}${EPACE} backup a database, optional backup filename, will use the default sql/databasename.sql.gz if not specified"
   echo "${EPACE}-dr | --database-restore [database_name] [/your/path/file_name]"
   echo "${EPACE}${EPACE} restore a database backup file to database_name, supports .gz and .sql"
+  echo -e "\033[1mBACKUP OPTIONS\033[0m"
+  echo "${EPACE}-ba | --backup-all [/your/path]*optional*"
+  echo "${EPACE}${EPACE} backup all databases, optional backup path, file will use the default sql/databasename.sql.gz"
+  echo "${EPACE}-bd | --backup-database [database_name] [/your/path/file_name]*optional*"
+  echo "${EPACE}${EPACE} backup a database, optional backup filename, will use the default sql/databasename.sql.gz if not specified"
   echo -e "\033[1mSSL OPTIONS\033[0m"
   echo "${EPACE}-sl | --ssl-list"
   echo "${EPACE}${EPACE} list all ssl"
@@ -801,17 +849,22 @@ while [ ! -z "${1}" ]; do
         xshok_database_password "$2"
         shift
         ;;
-      -db | --database-backup | --databasebackup)
-        xshok_check_s2 "$2";
-        xshok_check_s2 "$3";
-        xshok_database_backup "$2" "$3"
-        shift 2
-        ;;
       -dr | --database-restore | --databaserestore)
         xshok_check_s2 "$2";
         xshok_check_s2 "$3";
         xshok_database_restore "$2" "$3"
         shift 2
+        ;;
+      ## BACKUP
+      -bd | --backup-database | --backupdatabase)
+        xshok_check_s2 "$2";
+        xshok_check_s2 "$3";
+        xshok_backup_database "$2" "$3"
+        shift 2
+        ;;
+      -ba | --backup-all | --backupall)
+        xshok_backup_all_database "$2"
+        shift
         ;;
       ## SSL
       -sl | --ssl-list | --ssllist )
