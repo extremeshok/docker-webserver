@@ -54,11 +54,11 @@ function lst_match_line () {
 function xshok_check_s2 () {
   if [ "$1" ]; then
     if [[ "$1" =~ ^-.* ]]; then
-      xshok_pretty_echo_and_log "ERROR: Missing value for option or value begins with -" "="
+      echo "ERROR: Missing value for option or value begins with -" "="
       exit 1
     fi
   else
-    xshok_pretty_echo_and_log "ERROR: Missing value for option" "="
+    echo "ERROR: Missing value for option" "="
     exit 1
   fi
 }
