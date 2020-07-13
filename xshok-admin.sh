@@ -52,15 +52,15 @@ function lst_match_line () {
 
 # function to check if the $2 value is not null and does not start with -
 function xshok_check_s2 () {
-	if [ "$1" ]; then
-		if [[ "$1" =~ ^-.* ]]; then
-			xshok_pretty_echo_and_log "ERROR: Missing value for option or value begins with -" "="
-			exit 1
-		fi
-	else
-		xshok_pretty_echo_and_log "ERROR: Missing value for option" "="
-		exit 1
-	fi
+  if [ "$1" ]; then
+    if [[ "$1" =~ ^-.* ]]; then
+      xshok_pretty_echo_and_log "ERROR: Missing value for option or value begins with -" "="
+      exit 1
+    fi
+  else
+    xshok_pretty_echo_and_log "ERROR: Missing value for option" "="
+    exit 1
+  fi
 }
 
 function xshok_validate_domain () { #domain
@@ -457,14 +457,10 @@ function xshok_backup_all_database () { #path*optional
       echo ":------${DBNAME}-----:"
       if [ -z "$DBPATH" ] ; then
         result="$(xshok_backup_database "$DBNAME")"
-        res=$?
       else
         result="$(xshok_backup_database "$DBNAME" "${DBPATH}/${DBNAME}.sql.gz")"
-        res=$?
       fi
-
       echo $result
-
     fi
   done < <(docker-compose exec -T ${CONTAINER_MYSQL} su -c "mysql -uroot -p'${MYSQL_ROOT_PASSWORD}' -qfNsBe \"SHOW DATABASES\"")
 }
@@ -507,7 +503,7 @@ function xshok_database_restore () { #database #filename
 
   # create tempsql
   if [ ${DBFILENAME##*.} == "gz" ] ; then
-      zcat "${DBFILENAME}" > "${TEMPSQL}"
+    zcat "${DBFILENAME}" > "${TEMPSQL}"
   else
     cp -f "${DBFILENAME}" "${TEMPSQL}"
   fi
@@ -574,8 +570,8 @@ function xshok_website_warm_cache () { #domain
   xshok_container_is_running "$CONTAINER_OLS"
   xshok_validate_domain "${1}"
   wget --quiet "https://${DOMAIN}/sitemap.xml" --no-cache --output-document - | egrep -o "http(s?):\/\/${DOMAIN[^]} \"\(\)\]*" | while read line; do
-      time curl -A 'Cache Warmer' -s -L $line > /dev/null 2>&1
-      echo $line
+    time curl -A 'Cache Warmer' -s -L $line > /dev/null 2>&1
+    echo $line
   done
 }
 
@@ -808,121 +804,121 @@ while [ ! -z "${1}" ]; do
       #     xshok_domain_delete ${1}
       #     ;;
       ## WEBSITE
-      -wl | --website-list | --websitelist )
-          xshok_website_list
-          ;;
-      -wa | --website-add | --websiteadd )
-        xshok_check_s2 "$2";
-        xshok_website_add "$2"
-        xshok_restart
-        shift
-        ;;
-      -wd | --website-delete | --websitedelete )
-        xshok_check_s2 "$2";
-        xshok_website_delete "$2"
-        xshok_restart
-        shift
-        ;;
-      -wp | --website-permissions | --websitepermissions )
-        xshok_check_s2 "$2";
-        xshok_website_permissions "$2"
-        shift
-        ;;
+    -wl | --website-list | --websitelist )
+      xshok_website_list
+      ;;
+    -wa | --website-add | --websiteadd )
+      xshok_check_s2 "$2";
+      xshok_website_add "$2"
+      xshok_restart
+      shift
+      ;;
+    -wd | --website-delete | --websitedelete )
+      xshok_check_s2 "$2";
+      xshok_website_delete "$2"
+      xshok_restart
+      shift
+      ;;
+    -wp | --website-permissions | --websitepermissions )
+      xshok_check_s2 "$2";
+      xshok_website_permissions "$2"
+      shift
+      ;;
       ## DATABASE
-      -dl | --database-list | --databaselist)
-        xshok_check_s2 "$2";
-        xshok_database_list "$2"
-        shift
-        ;;
-      -da | --database-add | --databaseadd)
-        xshok_check_s2 "$2";
-        xshok_database_add "$2"
-        shift
-        ;;
-      -dd | --database-delete | --databasedelete)
-        xshok_check_s2 "$2";
-        xshok_database_delete "$2"
-        shift
-        ;;
-      -dp | --database-password | --databasepassword)
-        xshok_check_s2 "$2";
-        xshok_database_password "$2"
-        shift
-        ;;
-      -dr | --database-restore | --databaserestore)
-        xshok_check_s2 "$2";
-        xshok_check_s2 "$3";
-        xshok_database_restore "$2" "$3"
-        shift 2
-        ;;
+    -dl | --database-list | --databaselist)
+      xshok_check_s2 "$2";
+      xshok_database_list "$2"
+      shift
+      ;;
+    -da | --database-add | --databaseadd)
+      xshok_check_s2 "$2";
+      xshok_database_add "$2"
+      shift
+      ;;
+    -dd | --database-delete | --databasedelete)
+      xshok_check_s2 "$2";
+      xshok_database_delete "$2"
+      shift
+      ;;
+    -dp | --database-password | --databasepassword)
+      xshok_check_s2 "$2";
+      xshok_database_password "$2"
+      shift
+      ;;
+    -dr | --database-restore | --databaserestore)
+      xshok_check_s2 "$2";
+      xshok_check_s2 "$3";
+      xshok_database_restore "$2" "$3"
+      shift 2
+      ;;
       ## BACKUP
-      -bd | --backup-database | --backupdatabase)
-        xshok_check_s2 "$2";
-        xshok_check_s2 "$3";
-        xshok_backup_database "$2" "$3"
-        shift 2
-        ;;
-      -ba | --backup-all | --backupall)
-        xshok_backup_all_database "$2"
-        shift
-        ;;
+    -bd | --backup-database | --backupdatabase)
+      xshok_check_s2 "$2";
+      xshok_check_s2 "$3";
+      xshok_backup_database "$2" "$3"
+      shift 2
+      ;;
+    -ba | --backup-all | --backupall)
+      xshok_backup_all_database "$2"
+      shift
+      ;;
       ## SSL
-      -sl | --ssl-list | --ssllist )
-        xshok_ssl_list
-        ;;
-      -sa | --ssl-add | --ssladd )
-        xshok_check_s2 "$2";
-        xshok_ssl_add "$2"
-        shift
-        ;;
-      -sd | --ssl-delete | --ssldelete )
-        xshok_check_s2 "$2";
-        xshok_ssl_delete "$2"
-        shift
-        ;;
+    -sl | --ssl-list | --ssllist )
+      xshok_ssl_list
+      ;;
+    -sa | --ssl-add | --ssladd )
+      xshok_check_s2 "$2";
+      xshok_ssl_add "$2"
+      shift
+      ;;
+    -sd | --ssl-delete | --ssldelete )
+      xshok_check_s2 "$2";
+      xshok_ssl_delete "$2"
+      shift
+      ;;
       ## QUICK
-      -qa | --quick-add | --quickadd )
-        xshok_check_s2 "$2";
-        xshok_website_add "$2"
-        xshok_database_add "$2"
-        xshok_ssl_add "$2"
-        xshok_restart
-        shift
-        ;;
+    -qa | --quick-add | --quickadd )
+      xshok_check_s2 "$2";
+      xshok_website_add "$2"
+      xshok_database_add "$2"
+      xshok_ssl_add "$2"
+      xshok_restart
+      shift
+      ;;
       ## ADVANCED
-      -wc | --warm-cache | --warmcache )
-        xshok_check_s2 "$2";
-        xshok_website_warm_cache "$2"
-        shift
-        ;;
+    -wc | --warm-cache | --warmcache )
+      xshok_check_s2 "$2";
+      xshok_website_warm_cache "$2"
+      shift
+      ;;
       ## GENERAL
-      --up | --start | --init )
-        xshok_docker_up
-        shift
-        ;;
-      --down | --stop )
-        xshok_docker_down
-        shift
-        ;;
-      -r | --restart )
-        xshok_restart
-        shift
-        ;;
-      -b | --boot | --service | --systemd )
-        xshok_docker_boot
-        shift
-        ;;
-      -p | --password )
-        xshok_password
-        shift
-        ;;
-      -e | --env )
-        xshok_env
-        shift
-        ;;
-      *)
-        help_message
-        ;;
+    --up | --start | --init )
+      xshok_docker_up
+      shift
+      ;;
+    --down | --stop )
+      xshok_docker_down
+      shift
+      ;;
+    -r | --restart )
+      xshok_restart
+      shift
+      ;;
+    -b | --boot | --service | --systemd )
+      xshok_docker_boot
+      shift
+      ;;
+    -p | --password )
+      xshok_password
+      shift
+      ;;
+    -e | --env )
+      xshok_env
+      shift
+      ;;
+    *)
+      help_message
+      ;;
   esac
   shift
 done
