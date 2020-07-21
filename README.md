@@ -2,6 +2,20 @@
 Our optimized production web-server setup based on docker
 * openlitespeed + PHP 7.4 + letsencrypt ssl + mariadb(mysql) + redis + memcached
 
+# Designed for virtual hosting, ie more than 1 website.
+
+### Changes from v1
+#### new directory structure
+* per host acme -> vhosts-ssl/domain/acme
+* www-vhosts/domain/certs ->-> vhosts-ssl/domain/certs
+* www-vhosts/domain/dbinfo --> vhosts-db/domain/info
+* www-vhosts/domain/sql --> vhosts-db/domain/sql
+* www-vhosts/domain --> vhosts-www/domain/
+#### new xshok-admin options
+* vhost_export
+* vhost_import
+
+
 ## This setup is used for most of our web servers and has been used for more than 6 years.
 * We have near or perfect scores for all the major webpage and performance tests
 * There are literally thousands of sites using this setup, everything from online shops with more than 35 000 active customers to a simple blogs and forums.

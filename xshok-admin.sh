@@ -16,7 +16,7 @@
 ################################################################################
 #
 #    THERE ARE NO USER CONFIGURABLE OPTIONS IN THIS SCRIPT
-#
+# 
 ################################################################################
 
 ################# VARIBLES
@@ -34,6 +34,9 @@ EPACE='   '
 DOMAIN=""
 DOMAIN_ESCAPED=""
 FILTERED_DOMAIN=""
+
+################# DO NOT EDIT
+VERSION="2.0"
 
 ################# SUPPORTING FUNCTIONS :: START
 
@@ -560,7 +563,7 @@ function xshok_ssl_delete () {
     exit 1
   fi
   echo "Removing SSL ${DOMAIN} www.${DOMAIN} "
-  sed -i "/${DOMAIN} .*/d" /datastore/volumes/acme/domain_list.txt
+  sed -i "/${DOMAIN} .*/d" "${VOLUMES}/acme/domain_list.txt"
   echo "Remeber to remove the dir:  ${VHOST_DIR}/${DOMAIN}/certs"
 }
 
@@ -732,7 +735,7 @@ fi
 
 source "${PWD}/.env"
 
-echo "eXtremeSHOK.com Docker Webserver"
+echo "eXtremeSHOK.com Docker Webserver v${VERSION}"
 
 help_message () {
   echo -e "\033[1mWEBSITE OPTIONS\033[0m"
