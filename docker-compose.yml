@@ -53,6 +53,7 @@ services:
         - ./data/etc/mysql/conf.d/my-4gb.cnf:/etc/mysql/conf.d/my.cnf:ro
 #        - ./data/etc/mysql/conf.d/my-16gb.cnf:/etc/mysql/conf.d/my.cnf:ro
 #        - ./data/etc/mysql/conf.d/my-32gb.cnf:/etc/mysql/conf.d/my.cnf:ro
+        - vol-vhosts-sql:/var/vhosts/sql:rw
       environment:
         - TZ=${TIMEZONE}
         - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
@@ -157,7 +158,11 @@ services:
       env_file:
         - .env
       volumes:
-        - vol-www-vhosts:/var/www/vhosts:rw
+        - vol-vhosts-conf:/var/vhosts/conf:rw
+        - vol-vhosts-cron:/var/vhosts/cron:ro
+        - vol-vhosts-html:/var/vhosts/html:rw
+        - vol-vhosts-logs:/var/vhosts/logs:rw
+        - vol-vhosts-ssl:/var/vhosts/ssl:ro
         - vol-www-conf:/etc/openlitespeed:rw
         - ./xs:/xs:rw
       restart:          always
@@ -189,8 +194,9 @@ services:
       environment:
         - TZ=${TIMEZONE}
       volumes:
-        - vol-acme:/acme:rw
-        - vol-www-vhosts:/var/www/vhosts:rw
+#        - vol-acme:/acme:rw
+        - vol-vhosts-acme:/var/vhosts/acme:rw
+        - vol-vhosts-ssl:/var/vhosts/ssl:rw
       ports:
         - 80:80
       restart:          always
@@ -298,24 +304,55 @@ networks:
 
 ########## VOLUMES ########
 volumes:
-  vol-www-vhosts:
+  vol-vhosts-html:
     driver:             local
     driver_opts:
-      type:             bindW
+      type:             bind
       o:                bind
-      device:           ${PWD}/volumes/www-vhosts
+      device:           ${PWD}/volumes/vhosts-html
+  vol-vhosts-conf:
+    driver:             local
+    driver_opts:
+      type:             bind
+      o:                bind
+      device:           ${PWD}/volumes/vhosts-conf
+  vol-vhosts-cron:
+    driver:             local
+    driver_opts:
+      type:             bind
+      o:                bind
+      device:           ${PWD}/volumes/vhosts-cron
+  vol-vhosts-ssl:
+    driver:             local
+    driver_opts:
+      type:             bind
+      o:                bind
+      device:           ${PWD}/volumes/vhosts-ssl
+  vol-vhosts-acme:
+    driver:             local
+    driver_opts:
+      type:             bind
+      o:                bind
+      device:           ${PWD}/volumes/vhosts-acme
+  vol-vhosts-sql:
+    driver:             local
+    driver_opts:
+      type:             bind
+      o:                bind
+      device:           ${PWD}/volumes/vhosts-sql
+  vol-vhosts-logs:
+    driver:             local
+    driver_opts:
+      type:             bind
+      o:                bind
+      device:           ${PWD}/volumes/vhosts-logs
+  #######################
   vol-www-conf:
       driver:           local
       driver_opts:
         type:           bind
         o:              bind
         device:         ${PWD}/volumes/www-conf
-  vol-acme:
-    driver:             local
-    driver_opts:
-      type:             bind
-      o:                bind
-      device:           ${PWD}/volumes/acme
   vol-logs:
     driver:             local
     driver_opts:
