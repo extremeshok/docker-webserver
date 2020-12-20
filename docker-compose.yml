@@ -32,7 +32,7 @@ services:
       environment:
         - TZ=${TIMEZONE}
         - WATCHTOWER_CLEANUP=true
-        - WATCHTOWER_POLL_INTERVAL=300
+        - WATCHTOWER_POLL_INTERVAL=1800
         - WATCHTOWER_INCLUDE_STOPPED=true
         - WATCHTOWER_REVIVE_STOPPED=true
         - WATCHTOWER_TIMEOUT=180
@@ -172,6 +172,8 @@ services:
         - TZ=${TIMEZONE}
         - PHP_REDIS_SESSIONS=yes
         - VHOST_CRON_ENABLE=true
+        - PHP_MAX_UPLOAD_SIZE=64
+        - PHP_MAX_TIME=600
         - WP_AUTOUPDATE_ENABLE=true
       sysctls:
         - net.ipv6.conf.all.disable_ipv6=${SYSCTL_IPV6_DISABLED:-0}
