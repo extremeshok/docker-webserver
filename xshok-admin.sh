@@ -681,11 +681,13 @@ After=docker.service
 WantedBy=multi-user.target
 
 [Service]
-Type=oneshot
+Type=forking
 TimeoutStartSec=0
 RemainAfterExit=yes
 WorkingDirectory=${DIRNAME}
+
 EOF
+
 
   echo "ExecStart=/bin/bash ${PWD}/xshok-admin.sh --start" >> "/etc/systemd/system/xshok-webserver.service"
   echo "ExecStop=/bin/bash ${PWD}/xshok-admin.sh --stop" >> "/etc/systemd/system/xshok-webserver.service"
@@ -924,3 +926,6 @@ while [ ! -z "${1}" ]; do
   esac
   shift
 done
+
+# required for systemd, must be the last line
+exit 0
