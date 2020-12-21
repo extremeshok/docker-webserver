@@ -37,7 +37,7 @@ FILTERED_DOMAIN=""
 
 
 ################# Script Info
-script_version="1.2"
+script_version="1.3"
 script_version_date="2020-12-20"
 
 ################# SUPPORTING FUNCTIONS :: START
@@ -599,6 +599,28 @@ function xshok_docker_mysql_optimiser () {
     #docker-compose exec -T mysql /bin/bash -c '/usr/bin/mysqlcheck --host 127.0.0.1 --user root --password=${MYSQL_ROOT_PASSWORD} --all-databases --optimize --skip-write-binlog'
 }
 
+# Check for a new version
+function check_new_version() {
+    found_upgrade="no"
+    # shellcheck disable=SC2086
+    latest_version="$(curl --compressed --connect-timeout "30" --remote-time --location --retry "3" --max-time "30" "https://raw.githubusercontent.com/extremeshok/docker-webserver/master/xshok-admin.sh" 2> /dev/null | grep "^script_version=" | head -n1 | cut -d '"' -f 2)"
+    if [ "$latest_version" != "" ] ; then
+        # shellcheck disable=SC2183,SC2086
+        if [ "$(printf "%02d%02d%02d%02d" ${latest_version//./ })" -gt "$(printf "%02d%02d%02d%02d" ${script_version//./ })" ] ; then
+            echo "------------------------------"
+            echo "ALERT: New version : v${latest_version} @ https://github.com/extremeshok/docker-webserver"
+            found_upgrade="yes"
+        fi
+    fi
+
+    if [ "$found_upgrade" == "yes" ] ; then
+        echo "Quickly upgrade, run the following command as root:"
+        echo "bash xshok-admin.sh --upgrade"
+    fi
+
+}
+
+
 # Auto upgrade the master.conf and the
 function xshok_upgrade() {
 
@@ -612,7 +634,7 @@ function xshok_upgrade() {
     found_upgrade="no"
     latest_version="$(curl --compressed  --connect-timeout "30" --remote-time --location --retry "3" --max-time "30" "https://raw.githubusercontent.com/extremeshok/docker-webserver/master/xshok-admin.sh" 2> /dev/null | grep "^script_version=" | head -n1 | cut -d '"' -f 2)"
 
-    if [ "$latest_version" ] ; then
+    if [ "$latest_version" != "" ] ; then
         # shellcheck disable=SC2183,SC2086
         if [ "$(printf "%02d%02d%02d%02d" ${latest_version//./ })" -gt "$(printf "%02d%02d%02d%02d" ${script_version//./ })" ] ; then
             found_upgrade="yes"
@@ -818,7 +840,7 @@ fi
 
 source "${PWD}/.env"
 
-echo "eXtremeSHOK.com Docker Webserver"
+echo "eXtremeSHOK.com Docker Webserver ${script_version} (${script_version_date})"
 
 help_message () {
     echo -e "\033[1mWEBSITE OPTIONS\033[0m"
@@ -880,6 +902,7 @@ help_message () {
 
 if [ -z "${1}" ]; then
     help_message
+    check_new_version
     exit 1
 fi
 while [ ! -z "${1}" ]; do
@@ -1012,6 +1035,7 @@ while [ ! -z "${1}" ]; do
             ;;
         *)
             help_message
+            check_new_version
             ;;
     esac
     shift
