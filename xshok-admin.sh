@@ -37,8 +37,8 @@ FILTERED_DOMAIN=""
 
 
 ################# Script Info
-script_version="1.3"
-script_version_date="2020-12-20"
+script_version="1.4"
+script_version_date="2020-12-21"
 
 ################# SUPPORTING FUNCTIONS :: START
 
@@ -774,6 +774,12 @@ function xshok_docker_boot () {
     if [ ! -f "${PWD}/xshok-admin.sh" ] ; then
         echo "ERROR: ${PWD}/xshok-admin.sh not detected"
         exit 1
+    fi
+
+    if [ -f "/etc/systemd/system/docker-datastore.service" ] ; then
+        echo "removing conflicting systemd docker-datastore.service"
+        systemctl disable docker-datastore.service
+        rm -f /etc/systemd/system/docker-datastore.service
     fi
 
     echo "Generating Systemd service"
